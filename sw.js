@@ -1,5 +1,5 @@
 /* Cache the app shell so it opens offline. Bump CACHE on every deploy. */
-const CACHE = "label-reader-v1";
+const CACHE = "label-reader-v2";
 const SHELL = [
   "./", "./index.html", "./app.js", "./reference.js", "./manifest.webmanifest",
   "./icons/icon-192.png", "./icons/icon-512.png", "./icons/apple-touch-icon.png"
