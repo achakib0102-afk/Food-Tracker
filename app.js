@@ -407,7 +407,7 @@ function addPanel() {
     <p class="or">or</p>
     <div class="row">
       <input data-field="barcode" inputmode="numeric" value="${esc(S.barcode)}" placeholder="Barcode digits">
-      <button class="btn" data-act="barcode" ${S.busy || !S.barcode.trim() ? "disabled" : ""}>
+      <button class="btn" data-act="barcode" ${S.busy ? "disabled" : ""}>
         ${S.busy === "barcode" ? "…" : "Look up"}</button>
     </div>
     <div style="height:8px"></div>
@@ -547,6 +547,18 @@ function render() {
   }
 }
 
+async function runBarcode() {
+  const code = S.barcode.trim(); if (!code || S.busy) return;
+  S.error = ""; S.busy = "barcode"; render();
+  try { const p = await lookupBarcode(code); S.barcode = ""; openDraft(p, true); }
+  catch (e) {
+    S.error = e.message === "notfound" ? "No product with that barcode. Photograph the label instead."
+      : e.message === "empty" ? "That product is in the database but has no nutrition values. Photograph the label instead."
+      : "Couldn't reach Open Food Facts. Photograph the label instead.";
+  }
+  S.busy = ""; render();
+}
+
 /* ---------------- events ---------------- */
 app.addEventListener("click", async (ev) => {
   const el = ev.target.closest("[data-act]");
@@ -611,17 +623,7 @@ app.addEventListener("click", async (ev) => {
     S.tab = "day"; return logSavedMeal(m, S.adding || S.bucket);
   }
 
-  if (act === "barcode") {
-    const code = S.barcode.trim(); if (!code) return;
-    S.error = ""; S.busy = "barcode"; render();
-    try { const p = await lookupBarcode(code); S.barcode = ""; openDraft(p, true); }
-    catch (e) {
-      S.error = e.message === "notfound" ? "No product with that barcode. Photograph the label instead."
-        : e.message === "empty" ? "That product is in the database but has no nutrition values. Photograph the label instead."
-        : "Couldn't reach Open Food Facts. Photograph the label instead.";
-    }
-    S.busy = ""; return render();
-  }
+  if (act === "barcode") return runBarcode();
   if (act === "usda") {
     const q = S.query.trim(); if (!q) return;
     S.usdaMsg = ""; S.usda = []; S.busy = "usda"; render();
@@ -658,6 +660,13 @@ app.addEventListener("input", (ev) => {
     S.settings[f] = Number(t.value) || 0; saveSettings(); return;
   }
   if (["fdcKey", "anthropicKey"].includes(f)) { S.settings[f] = t.value; saveSettings(); return; }
+});
+
+app.addEventListener("keydown", (ev) => {
+  if (ev.key !== "Enter") return;
+  const f = ev.target.dataset && ev.target.dataset.field;
+  if (f === "barcode") { ev.preventDefault(); ev.target.blur(); runBarcode(); }
+  if (f === "query") { ev.preventDefault(); ev.target.blur(); }
 });
 
 app.addEventListener("change", (ev) => {
